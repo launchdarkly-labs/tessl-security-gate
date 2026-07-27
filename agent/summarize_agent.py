@@ -2,7 +2,7 @@
 """Demo agent for the Tessl security-gate tutorial.
 
 The security gate (`tessl review run security`) is the on-ramp: it clears a skill
-before you trust it. This agent is what happens *after* the gate — it loads the
+before you trust it. This agent is what happens *after* the gate. It loads the
 cleared skill and runs it, but takes its model and prompt from LaunchDarkly
 AgentControl rather than hardcoding them.
 
@@ -54,7 +54,7 @@ def load_cleared_skill(skill_dir: Path) -> str:
 def main() -> None:
     sdk_key = os.environ.get("LD_SDK_KEY")
     if not sdk_key:
-        die("LD_SDK_KEY is not set — the agent's config lives in AgentControl.")
+        die("LD_SDK_KEY is not set. The agent's config lives in AgentControl.")
     if not os.environ.get("OPENAI_API_KEY"):
         die("OPENAI_API_KEY is not set.")
 
@@ -70,7 +70,7 @@ def main() -> None:
     ldclient.set_config(Config(sdk_key))
     client = ldclient.get()
     if not client.is_initialized():
-        die("LaunchDarkly SDK failed to initialize — cannot fetch the config.")
+        die("LaunchDarkly SDK failed to initialize. Cannot fetch the config.")
     ai_client = LDAIClient(client)
 
     # 2. Fetch the config from AgentControl. The default is DISABLED on purpose:
