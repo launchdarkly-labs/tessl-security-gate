@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Local Claude Code settings — contains machine paths + workspace URLs, not for publish
+.claude/settings.local.json
+
+# Internal Jira tracking / working folder — not for publish
+202607_tessl-security-gate/
+
+# Secrets — never commit a real .env (keep .env.example)
+.env
+agent/.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
