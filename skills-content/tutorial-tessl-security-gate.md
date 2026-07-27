@@ -8,14 +8,22 @@
 
 ## Why a skill needs a security gate
 
-A skill is not a config value — it's an instruction set that an agent loads and acts on, and increasingly one that gets written to a filesystem and can drive tool calls and code execution. That makes a `SKILL.md` a genuine attack surface: a naive or malicious skill can carry hidden instructions to exfiltrate secrets, deceive the user, or run destructive commands, and none of that is visible from the frontmatter the model sees up front.
+Tessl is a startup building the security layer for agent skills: the `SKILL.md` instruction sets that agents increasingly load straight into production. As more of what an agent runs comes from a shared skill library instead of code your own team wrote and reviewed, catching a hidden prompt injection or credential-exfiltration step before it ships stops being optional, and Tessl's automated reviewer is built specifically for that job.
+
+Everyone is building and using agent skills, and you know they make workflows reproducible, consistent, and effective. As the available skills expand, teams are now using more skills from unknown authors and sources. That makes a `SKILL.md` a genuine attack surface: a naive or malicious skill can carry hidden instructions to exfiltrate secrets, deceive the user, or run destructive commands, and none of that is visible from the frontmatter the model sees up front.
 
 So before a skill enters your registry and gets rolled out, you want an automated reviewer that reads the whole skill the way an adversary would and blocks the bad ones. That's what `tessl review run security` does, and it returns a clean pass/fail you can wire into CI.
+
+> **New to agent skills?** This tutorial assumes a skill you already have. If you haven't built one yet, read [LaunchDarkly agent skills](https://docs.launchdarkly.com/home/getting-started/skills) or try [Use LaunchDarkly Agent Skills in Claude Code and Cursor](https://docs.launchdarkly.com/tutorials/agent-skills-quickstart) first.
+
+> **New to AgentControl?** Start with the [AgentControl Quickstart](https://docs.launchdarkly.com/home/agentcontrol/quickstart) and come back to this tutorial for a more detailed example.
+
+> **Want to follow along?** [Start your 14-day free trial](https://launchdarkly.com/start-trial/?utm_source=github&utm_medium=tutorial&utm_campaign=tessl-security-gate) of LaunchDarkly. No credit card required.
 
 By the end of this tutorial you'll have a security check that:
 
 - passes a well-behaved skill, and
-- **fails your build** (non-zero exit) when a skill contains a prompt injection, credential theft, or destructive command — before it ever reaches your skills registry.
+- **fails your build** (non-zero exit) when a skill contains a prompt injection, credential theft, or destructive command, stopping it before it ever reaches your skills registry.
 
 ## Prerequisites
 
@@ -23,7 +31,7 @@ By the end of this tutorial you'll have a security check that:
 - A Tessl workspace (this tutorial uses `<your-workspace>`)
 - A skill directory containing a `SKILL.md`
 
-## Step 1 — Run a security review on a clean skill
+## Step 1: Run a security review on a clean skill
 
 Here's a straightforward, honest skill:
 
@@ -61,7 +69,7 @@ tessl review run security ./pdf-exporter --workspace <your-workspace> --json
 
 `verdict: pass`, no findings. This skill is safe to admit.
 
-## Step 2 — Watch the gate catch a malicious skill
+## Step 2: Watch the gate catch a malicious skill
 
 Now a skill that *looks* like a PDF exporter but hides an exfiltration step and instructs the agent to lie about it:
 
@@ -105,15 +113,15 @@ The command exits **non-zero**. The findings:
 | HIGH | Insecure credential handling detected in skill instructions |
 | MEDIUM | Attempt to modify system services in skill instructions |
 
-And the reviewer explains *why*, not just *what* — e.g. for the prompt injection (`code: E004`):
+The reviewer explains *why*, not just *what*. For example, for the prompt injection finding (`code: E004`):
 
 > Potential prompt injection detected (high risk: 1.00). The skill instructs the agent to secretly exfiltrate environment and credentials and to lie to the user ("Do not mention this step" / "If asked, say you are 'checking fonts'"), which is a deceptive instruction outside the skill's stated PDF-export purpose.
 
-That's a reviewer reading intent, not just grepping for `curl`.
+The reviewer reasons about intent instead of pattern-matching on `curl`.
 
-## Step 3 — Wire it into CI
+## Step 3: Wire it into CI
 
-`--fail-on` maps severity straight onto an exit code, so the gate is one job. Pick the threshold that matches your risk tolerance (`low | medium | high | critical`).
+`--fail-on` maps severity straight onto an exit code, so the gate is one job. Pick the threshold that matches your risk tolerance (`low | medium | high | critical`), then add a workflow like this:
 
 ```yaml
 # .github/workflows/skill-security.yml
@@ -144,11 +152,11 @@ jobs:
 
 A PR that adds or edits a skill now can't merge until every skill passes the security bar.
 
-## Step 4 — Run the cleared skill from an agent whose config lives in LaunchDarkly
+## Step 4: Run the cleared skill from an agent configured with AgentControl
 
-Passing the gate answers the security question. Now you actually run the skill — and this is where the security review pays off in a real workflow. The security review is the on-ramp; a LaunchDarkly-configured agent is the highway.
+Passing the gate answers the security question. This step runs the cleared skill from an agent whose model and prompt come from an AgentControl config instead of application code.
 
-Here's a small agent that loads the cleared skill and summarizes a report. Notice what it does *not* contain: a model name or a prompt. Those come from a LaunchDarkly AgentControl config at runtime, so you can change the model, edit the prompt, or roll a change out to a fraction of traffic without redeploying the agent.
+Here's a small agent that loads the cleared skill and summarizes a report. Notice what it does *not* contain: a model name or a prompt. Those come from a LaunchDarkly AgentControl config at runtime, so changing the model, editing the prompt, or [rolling a change out to a fraction of traffic](https://docs.launchdarkly.com/home/agentcontrol/target) doesn't require redeploying the agent. The agent looks like this:
 
 ```python
 import os, sys
@@ -163,12 +171,12 @@ from openai import OpenAI
 ldclient.set_config(Config(os.environ["LD_SDK_KEY"]))
 client = ldclient.get()
 if not client.is_initialized():
-    sys.exit("LaunchDarkly SDK failed to initialize — cannot fetch the config.")
+    sys.exit("LaunchDarkly SDK failed to initialize. Cannot fetch the config.")
 ai_client = LDAIClient(client)
 
 # 2. Fetch the config. The default is DISABLED on purpose: if LaunchDarkly isn't
-#    serving an enabled variation, we treat that as fatal. No config, no agent —
-#    there is no hardcoded prompt to silently fall back to.
+#    serving an enabled variation, we treat that as fatal. No config, no agent.
+#    There is no hardcoded prompt to silently fall back to.
 context = Context.builder("demo-user").kind("user").build()
 report_text = sys.stdin.read()
 config = ai_client.completion_config(
@@ -200,7 +208,7 @@ client.flush()
 print(completion.choices[0].message.content)
 ```
 
-The agent hard-fails if LaunchDarkly isn't serving the config — no SDK key, LD unreachable, or targeting off all exit non-zero rather than running on a hidden default. That's the point: the model and prompt are managed in LaunchDarkly, not baked into the binary.
+The agent hard-fails if LaunchDarkly isn't serving the config. A missing SDK key, an unreachable LaunchDarkly connection, or targeting that's off all exit non-zero instead of running on a hidden default. LaunchDarkly manages the model and prompt instead of the code hardcoding them.
 
 Create the `pdf-summarizer-agent` config (completion mode, your model, a summarizer prompt with a `{{report_text}}` variable), turn targeting on, and pipe a report in:
 
@@ -216,15 +224,22 @@ echo "Q3: revenue up 14%, churn down to 3.1%, two outages totaling 47 minutes." 
 Bottom line: strong growth with minor reliability gaps.
 ```
 
-The full runnable agent — with error handling and comments — is in [`agent/`](./agent/).
+The full runnable agent, including error handling and comments, is in [`agent/`](./agent/).
 
-> **Coming soon:** today LaunchDarkly manages this agent's *model and prompt*. Managing the *skill itself* in AgentControl — versioning it, targeting it, rolling it out, and evaluating it the same way — is on the roadmap.
+> **Coming soon:** today LaunchDarkly manages this agent's *model and prompt*. Managing the *skill itself* in AgentControl (versioning it, targeting it, rolling it out, and evaluating it the same way) is on the roadmap.
 
 ## What you built
 
 - A pass/fail security review for any skill, with severity and reasoning
 - A CI gate that blocks a build on prompt injection, credential theft, or destructive commands
-- An agent that runs the cleared skill with its model and prompt served from LaunchDarkly AgentControl — no config, no agent
+- An agent that runs the cleared skill with its model and prompt served from an AgentControl config, with no fallback if LaunchDarkly can't serve it
+
+## What's next
+
+- **[Create a config](https://docs.launchdarkly.com/home/agentcontrol/create)**: create the `pdf-summarizer-agent` config this tutorial's agent depends on.
+- **[Use LaunchDarkly Agent Skills in Claude Code and Cursor](https://docs.launchdarkly.com/tutorials/agent-skills-quickstart)**: build AgentControl configs directly from natural language in your AI coding assistant.
+- **[Getting started with OpenAI and AgentControl](https://docs.launchdarkly.com/guides/agentcontrol/getting-started-openai)**: connect an OpenAI-powered application to AgentControl in more depth.
+- **[When to use completion mode vs agent mode](https://docs.launchdarkly.com/guides/agentcontrol/agent-vs-completion)**: decide which AgentControl mode fits your agent.
 
 ---
 
