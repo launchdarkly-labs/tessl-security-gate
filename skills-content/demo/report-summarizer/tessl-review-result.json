@@ -1,0 +1,16 @@
+{
+  "securityReviewRunId": "019faec5-1a8f-709e-9fd5-deaaeb8fb493",
+  "status": "completed",
+  "overallSeverity": "MEDIUM",
+  "verdict": "pass",
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "severityLevel": "LOW",
+      "code": "W011",
+      "title": "Third-party content exposure detected (indirect prompt injection risk).",
+      "reasoning": "The skill’s required workflow only reads “the report text the user provides” (user-authored free text) and then transforms it, so the model ingests outsider text directly at step 1.",
+      "issueDescription": "The skill exposes the agent to untrusted, user-generated content from public third-party sources, creating a risk of indirect prompt injection. This includes browsing arbitrary URLs, reading social media posts or forum comments, and analyzing content from unknown websites."
+    }
+  ]
+}

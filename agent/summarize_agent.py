@@ -21,6 +21,7 @@ Env (see .env.example):
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -35,7 +36,7 @@ from openai import OpenAI
 CONFIG_KEY = os.environ.get("LD_AI_CONFIG_KEY", "pdf-summarizer-agent")
 # The clean, Tessl-cleared skill. We deliberately point at the skill that passed
 # `tessl review run security`; the risky one never reaches this agent.
-SKILL_DIR = Path(__file__).resolve().parents[1] / "skills-content" / "demo" / "pdf-exporter"
+SKILL_DIR = Path(__file__).resolve().parents[1] / "skills-content" / "demo" / "report-summarizer"
 
 
 def die(msg: str) -> "NoReturn":  # noqa: F821
@@ -44,8 +45,28 @@ def die(msg: str) -> "NoReturn":  # noqa: F821
 
 
 def load_cleared_skill(skill_dir: Path) -> str:
-    """Load the SKILL.md that passed the Tessl security gate."""
+    """Load a skill only if its directory carries a passing Tessl review result.
+
+    `tessl-review-result.json` is the real `tessl review run security --json`
+    output, committed alongside the skill when it last passed review. This is
+    the actual gate: an unreviewed or failing skill has no such file (or one
+    with verdict != "pass"), and this function refuses to load it either way.
+    """
     skill_md = skill_dir / "SKILL.md"
+    review_path = skill_dir / "tessl-review-result.json"
+
+    if not review_path.is_file():
+        die(f"no Tessl review result at {review_path}. Refusing to load an unreviewed skill.")
+    try:
+        review = json.loads(review_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        die(f"{review_path} is not valid JSON ({exc}). Refusing to load the skill.")
+    if review.get("verdict") != "pass":
+        die(
+            f"{skill_dir.name} has not passed its Tessl security review "
+            f"(verdict={review.get('verdict')!r}). Refusing to load it."
+        )
+
     if not skill_md.is_file():
         die(f"cleared skill not found at {skill_md}")
     return skill_md.read_text(encoding="utf-8")
@@ -118,9 +139,7 @@ def main() -> None:
     print(
         "\n---\n"
         f"Served by AgentControl config '{CONFIG_KEY}' "
-        f"(model={config.model.name}). Metrics sent to LaunchDarkly.\n"
-        "Coming soon: manage and roll out the skill itself in AgentControl, the "
-        "same way this agent's model and prompt are managed today."
+        f"(model={config.model.name}). Metrics sent to LaunchDarkly."
     )
 
 

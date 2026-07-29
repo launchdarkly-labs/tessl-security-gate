@@ -8,15 +8,16 @@ agent is the highway: it loads the cleared skill and runs it, but takes its
 ## What it demonstrates
 
 - **Config lives in AgentControl, not the code.** The system/user prompt and the
-  model (`gpt-4o`) come from the AgentControl config `pdf-summarizer-agent`.
-  Change the model or prompt in LaunchDarkly and the agent picks it up — no
-  redeploy.
+  model come from the AgentControl config `pdf-summarizer-agent`. Change the
+  model or prompt in LaunchDarkly and the agent picks it up — no redeploy.
 - **No config, no agent.** There is no hardcoded prompt fallback. If LaunchDarkly
   isn't serving an enabled variation (missing SDK key, LD unreachable, or
   targeting off), the agent exits non-zero instead of quietly running on a
   default.
-- **Only runs a cleared skill.** It loads `../skills-content/demo/pdf-exporter`,
-  the skill that passed `tessl review run security`.
+- **Only runs a cleared skill.** It loads `../skills-content/demo/report-summarizer`,
+  and checks the `tessl-review-result.json` committed next to it for
+  `verdict: "pass"` before it ever reads `SKILL.md`. No passing result on file,
+  no skill — the check is real, not just a comment.
 - **Metrics flow back.** Duration, tokens, and success are tracked to
   LaunchDarkly via `tracker.track_metrics_of`.
 
@@ -34,9 +35,3 @@ You need an AgentControl config named `pdf-summarizer-agent` (completion mode)
 with targeting on in the environment your `LD_SDK_KEY` points at. Create it with
 the [`configs-create`](https://launchdarkly.com/docs) flow, or adapt
 `LD_AI_CONFIG_KEY` to point at your own.
-
-## Coming soon
-
-Today AgentControl manages this agent's **model and prompt**. Managing the
-**skill itself** in AgentControl — versioning it, targeting it, rolling it out,
-and evaluating it the same way — is on the roadmap.
