@@ -8,7 +8,7 @@ AgentControl rather than hardcoding them.
 
 Design choices for the demo:
   * No hardcoded prompt fallback. The system/user messages come only from the
-    AgentControl config `pdf-summarizer-agent`.
+    AgentControl config `report-summarizer-agent`.
   * Hard-fail if LaunchDarkly isn't serving the config. If the SDK returns
     enabled=False (no valid SDK key, LD unreachable, or targeting off), the
     agent refuses to run and exits non-zero. No config, no agent.
@@ -17,7 +17,7 @@ Design choices for the demo:
 Env (see .env.example):
   LD_SDK_KEY       server-side SDK key for the environment whose targeting is on
   OPENAI_API_KEY   OpenAI key for the completion call
-  LD_AI_CONFIG_KEY optional; defaults to "pdf-summarizer-agent"
+  LD_AI_CONFIG_KEY optional; defaults to "report-summarizer-agent"
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ from ldai.client import AICompletionConfigDefault, LDAIClient
 from ldai_openai import convert_messages_to_openai, get_ai_metrics_from_response
 from openai import OpenAI
 
-CONFIG_KEY = os.environ.get("LD_AI_CONFIG_KEY", "pdf-summarizer-agent")
+CONFIG_KEY = os.environ.get("LD_AI_CONFIG_KEY", "report-summarizer-agent")
 # The clean, Tessl-cleared skill. We deliberately point at the skill that passed
 # `tessl review run security`; the risky one never reaches this agent.
 SKILL_DIR = Path(__file__).resolve().parents[1] / "skills-content" / "demo" / "report-summarizer"

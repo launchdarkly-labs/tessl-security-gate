@@ -8,7 +8,7 @@ agent is the highway: it loads the cleared skill and runs it, but takes its
 ## What it demonstrates
 
 - **Config lives in AgentControl, not the code.** The system/user prompt and the
-  model come from the AgentControl config `pdf-summarizer-agent`. Change the
+  model come from the AgentControl config `report-summarizer-agent`. Change the
   model or prompt in LaunchDarkly and the agent picks it up — no redeploy.
 - **No config, no agent.** There is no hardcoded prompt fallback. If LaunchDarkly
   isn't serving an enabled variation (missing SDK key, LD unreachable, or
@@ -31,7 +31,7 @@ set -a; source .env; set +a
 echo "Your report text here..." | python summarize_agent.py
 ```
 
-You need an AgentControl config named `pdf-summarizer-agent` (completion mode)
+You need an AgentControl config named `report-summarizer-agent` (completion mode)
 with targeting on in the environment your `LD_SDK_KEY` points at. Create it with
 the [`configs-create`](https://launchdarkly.com/docs) flow, or adapt
 `LD_AI_CONFIG_KEY` to point at your own.
