@@ -18,8 +18,8 @@ agent is the highway: it loads the cleared skill and runs it, but takes its
   and checks the `tessl-review-result.json` committed next to it for
   `verdict: "pass"` before it ever reads `SKILL.md`. No passing result on file,
   no skill — the check is real, not just a comment.
-- **Metrics flow back.** Duration, tokens, and success are tracked to
-  LaunchDarkly via `tracker.track_metrics_of`.
+- **Metrics flow back.** The SDK's OpenAI handler sends duration, tokens, and
+  success to LaunchDarkly on its own.
 
 ## Run it
 
@@ -32,6 +32,7 @@ echo "Your report text here..." | python summarize_agent.py
 ```
 
 You need an AgentControl config named `report-summarizer-agent` (completion mode)
-with targeting on in the environment your `LD_SDK_KEY` points at. Create it with
-the [`configs-create`](https://launchdarkly.com/docs) flow, or adapt
-`LD_AI_CONFIG_KEY` to point at your own.
+with targeting on in the environment your `LD_SDK_KEY` points at. Its system
+message must include `{{skill}}` and its user message `{{report_text}}`. The
+[tutorial](https://launchdarkly.com/docs/tutorials/tessl-security-gate) shows how
+to create it, or set `LD_AI_CONFIG_KEY` to point at your own.

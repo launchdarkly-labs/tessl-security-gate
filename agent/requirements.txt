@@ -1,4 +1,2 @@
-launchdarkly-server-sdk>=9.0.0
-launchdarkly-server-sdk-ai>=1.1.0
-launchdarkly-server-sdk-ai-openai>=0.7.0
-openai>=1.0.0
+launchdarkly-ai-server[ld]>=1.0.0
+launchdarkly-ai-openai-messages>=1.0.0
